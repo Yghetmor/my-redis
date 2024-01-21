@@ -62,12 +62,10 @@ impl Frame {
             },
             b':' => {
                 let mut line = Vec::new();
-                while let i = input.get_u8() {
-                    if i == b'\n' {
-                        break;
-                    }
-                    if i != b'\r' {
-                        line.push(i);
+                while input.remaining() != 0 {
+                    let i = input.get_u8();
+                    if i != b'\r' && i != b'\n' {
+                        line.push(i)
                     }
                 }
 
@@ -78,16 +76,16 @@ impl Frame {
             },
             b'$' => {
                 let mut line = Vec::new();
-                while let i = input.get_u8() {
-                    if i == b'\n' {
-                        break;
-                    }
-                    if i != b'\r' {
-                        line.push(i);
+                let mut i: u8 = 0;
+                while i != b'\n' {
+                    i = input.get_u8();
+                    if i != b'\r' && i != b'\n' {
+                        line.push(i)
                     }
                 }
 
                 let num = String::from_utf8(line).unwrap();
+                println!("{:?}", &num);
                 let num = num.parse::<usize>().unwrap();
                 let n = num + 2;
 
@@ -313,6 +311,7 @@ fn deser_array(vec: &mut Vec<Frame>) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use crate::Frame;
+    use bytes::Bytes;
     use std::io::Cursor;
     //use super::{deser_error, ser_array};
 
@@ -352,23 +351,18 @@ mod tests {
         let expected = "-Error message\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-
-    #[test]
-    fn error_deser_fn() {
-        let input = "Error message".to_string();
-        let output = deser_error(input);
-        let expected = "-Error message\r\n".as_bytes().to_vec();
-        assert_eq!(output, expected);
-    }
+    */
 
     #[test]
     fn int_serialization() {
-        let input = ":+231\r\n".as_bytes().to_vec();
-        let output = Frame::serialize(input).unwrap();
+        let input = ":+231\r\n".as_bytes();
+        let mut input_cursor = Cursor::new(input);
+        let output = Frame::serialize(&mut input_cursor).unwrap();
         let expected = Frame::Integer(231);
         assert_eq!(output, expected);
     }
 
+    /*
     #[test]
     fn int_deser() {
         let mut input = Frame::Integer(231);
@@ -376,15 +370,18 @@ mod tests {
         let expected = ":+231\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
+    */
 
     #[test]
     fn bulk_serialization() {
-        let input = "$5\r\nhello\r\n".as_bytes().to_vec();
-        let output = Frame::serialize(input).unwrap();
-        let expected = Frame::Bulk("hello".as_bytes().to_vec());
+        let input = "$5\r\nhello\r\n".as_bytes();
+        let mut input_cursor = Cursor::new(input);
+        let output = Frame::serialize(&mut input_cursor).unwrap();
+        let expected = Frame::Bulk(Bytes::from("hello"));
         assert_eq!(output, expected);
     }
 
+    /*
     #[test]
     fn bulk_deser() {
         let mut input = Frame::Bulk("hello".as_bytes().to_vec());

@@ -1,4 +1,5 @@
 use bytes::{Buf, Bytes};
+use std::io::Cursor;
 
 #[derive(Debug, PartialEq)]
 pub enum Frame {
@@ -11,28 +12,105 @@ pub enum Frame {
 }
 
 impl Frame {
-    pub fn serialize(input: Vec<u8>) -> Result<Frame, String> {
-        match input[0] as char {
-            '+' => {
-                Ok(ser_simple_string(input))
-            },
-            '-' => {
-                Ok(ser_simple_error(input))
-            },
-            ':' => {
-                Ok(ser_int(input))
-            },
-            '$' => {
-                Ok(ser_bulk(input))
-            },
-            '_' => Ok(Frame::Null),
-            '*' => {
-                let input = input.splitn(2, |c| *c == b'\n').nth(1).unwrap().to_vec();
-                if let Ok(res) = ser_array(input) {
-                    Ok(res)
-                } else {
-                    return Err("Unimplemented data type".to_string());
+    pub fn array() -> Frame {
+        Frame::Array(vec![])
+    }
+
+    pub fn push_bulk(&mut self, bytes: Bytes) {
+        match self {
+            Frame::Array(vec) => vec.push(Frame::Bulk(bytes)),
+            _ => panic!("not an array frame"),
+        }
+    }
+
+    pub fn push_int(&mut self, value: i64) {
+        match self {
+            Frame::Array(vec) => vec.push(Frame::Integer(value)),
+            _ => panic!("not an array frame"),
+        }
+    }
+
+    pub fn serialize(input: &mut Cursor<&[u8]>) -> Result<Frame, String> {
+        match input.get_u8() {
+            b'+' => {
+                let mut line = Vec::new();
+                while let i = input.get_u8() {
+                    line.push(i)
                 }
+                if let Ok(num) = String::from_utf8(line) {
+                    Ok(Frame::Simple(num))
+                } else {
+                    Err("Error parsing simple string".to_string())
+                }
+            },
+            b'-' => {
+                let mut line = Vec::new();
+                while let i = input.get_u8() {
+                    line.push(i)
+                }
+                if let Ok(num) = String::from_utf8(line) {
+                    Ok(Frame::Simple(num))
+                } else {
+                    Err("Error parsing simple error".to_string())
+                }
+            },
+            b':' => {
+                let mut line = Vec::new();
+                while let i = input.get_u8() {
+                    if i == b'\n' {
+                        break;
+                    }
+                    if i != b'\r' {
+                        line.push(i);
+                    }
+                }
+
+                let num = String::from_utf8(line).unwrap();
+                let num = num.parse::<i64>().unwrap();
+
+                Ok(Frame::Integer(num))
+            },
+            b'$' => {
+                let mut line = Vec::new();
+                while let i = input.get_u8() {
+                    if i == b'\n' {
+                        break;
+                    }
+                    if i != b'\r' {
+                        line.push(i);
+                    }
+                }
+
+                let num = String::from_utf8(line).unwrap();
+                let num = num.parse::<usize>().unwrap();
+                let n = num + 2;
+
+                let data = Bytes::copy_from_slice(&input.chunk()[..num]);
+                input.advance(n);
+
+                Ok(Frame::Bulk(data))
+            },
+            b'_' => Ok(Frame::Null),
+            b'*' => {
+                let mut line = Vec::new();
+                while let i = input.get_u8() {
+                    if i == b'\n' {
+                        break;
+                    }
+                    if i != b'\r' {
+                        line.push(i);
+                    }
+                }
+
+                let len = String::from_utf8(line).unwrap();
+                let len = len.parse::<usize>().unwrap();
+                let mut out = Vec::with_capacity(len);
+
+                for _ in 0..len {
+                    out.push(Frame::serialize(input).unwrap());
+                }
+
+                Ok(Frame::Array(out))
             },
             _ => Err("Unimplemented data type".to_string()),
         }
@@ -62,6 +140,9 @@ impl Frame {
         }
     }
 }
+
+//HELPER FN
+
 //SERIALIZATION
 
 fn ser_simple_string(input: Vec<u8>) -> Frame {

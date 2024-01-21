@@ -97,11 +97,10 @@ impl Frame {
             b'_' => Ok(Frame::Null),
             b'*' => {
                 let mut line = Vec::new();
-                while let i = input.get_u8() {
-                    if i == b'\n' {
-                        break;
-                    }
-                    if i != b'\r' {
+                let mut i: u8 = 0;
+                while i != b'\n' {
+                    i = input.get_u8();
+                    if i != b'\r' && i != b'\n' {
                         line.push(i);
                     }
                 }
@@ -389,15 +388,18 @@ mod tests {
         let expected = "$5\r\nhello\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
+    */
 
     #[test]
     fn null_serialization() {
-        let input = "_\r\n".as_bytes().to_vec();
-        let output = Frame::serialize(input).unwrap();
+        let input = "_\r\n".as_bytes();
+        let mut input_cursor = Cursor::new(input);
+        let output = Frame::serialize(&mut input_cursor).unwrap();
         let expected = Frame::Null;
         assert_eq!(output, expected);
     }
 
+    /*
     #[test]
     fn null_deser() {
         let mut input = Frame::Null;
@@ -405,25 +407,19 @@ mod tests {
         let expected = "_\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
+    */
 
     #[test]
     fn array_serialization() {
-        let input = "*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n".as_bytes().to_vec();
-        let output = Frame::serialize(input).unwrap();
-        let v: Vec<Frame> = vec![Frame::Bulk("hello".as_bytes().to_vec()), Frame::Bulk("world".as_bytes().to_vec())];
+        let input = "*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n".as_bytes();
+        let mut input_cursor = Cursor::new(input);
+        let output = Frame::serialize(&mut input_cursor).unwrap();
+        let v: Vec<Frame> = vec![Frame::Bulk(Bytes::from("hello")), Frame::Bulk(Bytes::from("world"))];
         let expected = Frame::Array(v);
         assert_eq!(output, expected);
     }
 
-    #[test]
-    fn array_ser_fn() {
-        let input = "*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n".as_bytes().to_vec();
-        let output = ser_array(input).unwrap();
-        let v: Vec<Frame> = vec![Frame::Bulk("hello".as_bytes().to_vec()), Frame::Bulk("world".as_bytes().to_vec())];
-        let expected = Frame::Array(v);
-        assert_eq!(output, expected);
-    }
-
+    /*
     #[test]
     fn array_deser() {
         let v: Vec<Frame> = vec![Frame::Bulk("hello".as_bytes().to_vec()), Frame::Bulk("world".as_bytes().to_vec())];

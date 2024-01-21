@@ -119,7 +119,6 @@ impl Frame {
         }
     }
 
-    /*
     pub fn deserialize(&mut self) -> Vec<u8> {
         match self {
             Frame::Simple(s) => {
@@ -132,7 +131,7 @@ impl Frame {
                 deser_int(*val)
             },
             Frame::Bulk(ref mut vec) => {
-                deser_string(vec)
+                deser_string(&mut vec.to_vec())
             },
             Frame::Null => {
                 let output: Vec<u8> = vec!('_' as u8, '\r' as u8, '\n' as u8);
@@ -143,84 +142,12 @@ impl Frame {
             },
         }
     }
-    */
 }
 
 //HELPER FN
 
-//SERIALIZATION
-
-/*
-fn ser_simple_string(input: Vec<u8>) -> Frame {
-    let vec = input.into_iter().skip(1).take_while(|x| *x != b'\r').collect();
-    let strin = String::from_utf8(vec).unwrap();
-    Frame::Simple(strin)
-}
-
-fn ser_simple_error(input: Vec<u8>) -> Frame {
-    let vec = input.into_iter().skip(1).take_while(|x| *x != b'\r').collect();
-    let err = String::from_utf8(vec).unwrap();
-    Frame::Error(err)
-}
-
-fn ser_int(input: Vec<u8>) -> Frame {
-    let mut vec: Vec<u8> = input.into_iter().skip(1).take_while(|x| *x != b'\r').collect();
-    let sign = vec.remove(0);
-    let num: i64 = std::str::from_utf8(&vec).unwrap().parse().unwrap();
-    if sign as char == '+' {
-        Frame::Integer(num)
-    } else {
-        Frame::Integer((-1) * num)
-    }
-}
-
-fn ser_bulk(input: Vec<u8>) -> Frame {
-    let length: Vec<u8> = input.iter().skip(1).take_while(|x| **x != b'\r').map(|x| *x).collect();
-    let length: u32 = std::str::from_utf8(&length).unwrap().parse().unwrap();
-    let strin = input.into_iter().skip_while(|x| *x != b'\n').skip(1).take(length as usize).collect();
-    Frame::Bulk(strin)
-}
-
-fn ser_array(input: Vec<u8>) -> Result<Frame, String> {     //DOESNT WORK BC LINE PER LINE NOT GOOD
-    let mut out: Vec<Frame> = Vec::new();
-    let input: Vec<Vec<u8>> = input.split(|x| *x == '\n' as u8).map(Vec::from).collect(); 
-    for (i, line) in input.iter().enumerate() {
-        let mut temp: Frame = Frame::Null;
-        match line[0] as char {
-            '+' => {
-                temp = ser_simple_string((*line).clone());
-            },
-            '-' => {
-                temp = ser_simple_error((*line).clone());
-            },
-            ':' => {
-                temp = ser_int((*line).clone());
-            },
-            '$' => {
-                let mut input2 = input[i + 1].clone();
-                let mut line = line.clone();
-                line.append(&mut input2);
-                temp = ser_bulk(line);
-            },
-            '_' => temp = Frame::Null,
-            '*' => {
-                if let Ok(res) = ser_array((*line).clone()) {
-                    temp = res;
-                } else {
-                    return Err("Unimplemented data type".to_string());
-                }
-            },
-            _ => {},
-        }
-        out.push(temp);
-    }
-    Ok(Frame::Array(out))
-}
-*/
-
 //DESERIALIZATION
 
-/*
 fn deser_simple_string(s: String) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::new();
     output.push('+' as u8);
@@ -276,6 +203,8 @@ fn deser_array(vec: &mut Vec<Frame>) -> Vec<u8> {
     output.push('*' as u8);
     let mut length = vec.len().to_string().as_bytes().to_vec();
     output.append(&mut length);
+    output.push(b'\r');
+    output.push(b'\n');
     for frame in vec {
         let mut temp: Vec<u8> = Vec::new();
         match frame {
@@ -289,7 +218,7 @@ fn deser_array(vec: &mut Vec<Frame>) -> Vec<u8> {
                 temp = deser_int(*val);
             },
             Frame::Bulk(ref mut vec) => {
-                temp = deser_string(vec);
+                temp = deser_string(&mut vec.to_vec());
             },
             Frame::Null => {
                 let output: Vec<u8> = vec!('_' as u8, '\r' as u8, '\n' as u8);
@@ -303,7 +232,6 @@ fn deser_array(vec: &mut Vec<Frame>) -> Vec<u8> {
     }
      output
 }
-*/
 
 //TESTS
 
@@ -323,7 +251,6 @@ mod tests {
         assert_eq!(output, expected);
     }
 
-    /*
     #[test]
     fn simple_deser() {
         let mut input = Frame::Simple("OK".to_string());
@@ -331,7 +258,6 @@ mod tests {
         let expected = "+OK\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-    */
 
     #[test]
     fn error_serialization() {
@@ -342,7 +268,6 @@ mod tests {
         assert_eq!(output, expected);
     }
 
-    /*
     #[test]
     fn error_deser() {
         let mut input = Frame::Error("Error message".to_string());
@@ -350,7 +275,6 @@ mod tests {
         let expected = "-Error message\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-    */
 
     #[test]
     fn int_serialization() {
@@ -361,7 +285,6 @@ mod tests {
         assert_eq!(output, expected);
     }
 
-    /*
     #[test]
     fn int_deser() {
         let mut input = Frame::Integer(231);
@@ -369,7 +292,6 @@ mod tests {
         let expected = ":+231\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-    */
 
     #[test]
     fn bulk_serialization() {
@@ -380,15 +302,13 @@ mod tests {
         assert_eq!(output, expected);
     }
 
-    /*
     #[test]
     fn bulk_deser() {
-        let mut input = Frame::Bulk("hello".as_bytes().to_vec());
+        let mut input = Frame::Bulk(Bytes::from("hello"));
         let output = input.deserialize();
         let expected = "$5\r\nhello\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-    */
 
     #[test]
     fn null_serialization() {
@@ -399,7 +319,6 @@ mod tests {
         assert_eq!(output, expected);
     }
 
-    /*
     #[test]
     fn null_deser() {
         let mut input = Frame::Null;
@@ -407,7 +326,6 @@ mod tests {
         let expected = "_\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-    */
 
     #[test]
     fn array_serialization() {
@@ -419,14 +337,12 @@ mod tests {
         assert_eq!(output, expected);
     }
 
-    /*
     #[test]
     fn array_deser() {
-        let v: Vec<Frame> = vec![Frame::Bulk("hello".as_bytes().to_vec()), Frame::Bulk("world".as_bytes().to_vec())];
+        let v: Vec<Frame> = vec![Frame::Bulk(Bytes::from("hello")), Frame::Bulk(Bytes::from("world"))];
         let mut input = Frame::Array(v);
         let output = input.deserialize();
         let expected = "*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
-    */
 }

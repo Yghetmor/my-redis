@@ -1,7 +1,7 @@
 use bytes::{Buf, Bytes};
 use std::io::Cursor;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Frame {
     Simple(String),
     Error(String),
@@ -27,6 +27,19 @@ impl Frame {
         match self {
             Frame::Array(vec) => vec.push(Frame::Integer(value)),
             _ => panic!("not an array frame"),
+        }
+    }
+
+    pub fn to_string(&mut self) -> Result<String, String> {
+        match self {
+            Frame::Simple(s) => Ok(s.to_string()),
+            Frame::Error(s) => Ok(s.to_string()),
+            Frame::Integer(i) => Ok(i.to_string()),
+            Frame::Bulk(s) => {
+                let s = String::from_utf8(s.to_vec()).unwrap();
+                Ok(s)
+            },
+            _ => Err("Could not convert to string".to_string()),
         }
     }
 
@@ -240,7 +253,6 @@ mod tests {
     use crate::Frame;
     use bytes::Bytes;
     use std::io::Cursor;
-    //use super::{deser_error, ser_array};
 
     #[test]
     fn simple_serialization() {

@@ -52,7 +52,7 @@ impl Handler {
                                 },
                                 "SET" => {
                                     if vec.len() != 3 {
-                                        return Err("incorrect number of arguments for GET command".to_string());
+                                        return Err("incorrect number of arguments for SET command".to_string());
                                     } else {
                                         self.command = Command::SET { 
                                             name: vec[1].to_string().unwrap(),
@@ -69,6 +69,37 @@ impl Handler {
                 }
             }
             _ => Err("Unexpected frame".to_string()),
+        }
+    }
+    
+    fn make_command(&mut self, input: &str) -> Result<(), String> {
+        let vec: Vec<&str> = input.split(' ').collect();
+        let cmd = vec[0].to_uppercase();
+        match cmd.as_str() {
+            "PING" => {
+                self.command = Command::PING;
+                Ok(())
+            },
+            "GET" => {
+                if vec.len() != 2 {
+                    Err("Incorrect number of arguments for GET command".to_string())
+                } else {
+                    self.command = Command::GET { name: vec[1].to_string() };
+                    Ok(())
+                }
+            }
+            "SET" => {
+                if vec.len() != 3 {
+                    Err("Incorrect number of arguments for SET command".to_string())
+                } else {
+                    self.command = Command::SET { 
+                        name: vec[1].to_string(),
+                        val: Frame::Bulk(Bytes::from(vec[2].to_string())),
+                    };
+                    Ok(())
+                }
+            }
+            _ => Err("Unknown command".to_string()),
         }
     }
 }

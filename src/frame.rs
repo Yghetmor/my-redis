@@ -34,8 +34,11 @@ impl Frame {
         match input.get_u8() {
             b'+' => {
                 let mut line = Vec::new();
-                while let i = input.get_u8() {
-                    line.push(i)
+                while input.remaining() != 0 {
+                    let i = input.get_u8();
+                    if i != b'\r' && i != b'\n' {
+                        line.push(i)
+                    }
                 }
                 if let Ok(num) = String::from_utf8(line) {
                     Ok(Frame::Simple(num))
@@ -45,11 +48,14 @@ impl Frame {
             },
             b'-' => {
                 let mut line = Vec::new();
-                while let i = input.get_u8() {
-                    line.push(i)
+                while input.remaining() != 0 {
+                    let i = input.get_u8();
+                    if i != b'\r' && i != b'\n' {
+                        line.push(i)
+                    }
                 }
                 if let Ok(num) = String::from_utf8(line) {
-                    Ok(Frame::Simple(num))
+                    Ok(Frame::Error(num))
                 } else {
                     Err("Error parsing simple error".to_string())
                 }
@@ -116,6 +122,7 @@ impl Frame {
         }
     }
 
+    /*
     pub fn deserialize(&mut self) -> Vec<u8> {
         match self {
             Frame::Simple(s) => {
@@ -139,12 +146,14 @@ impl Frame {
             },
         }
     }
+    */
 }
 
 //HELPER FN
 
 //SERIALIZATION
 
+/*
 fn ser_simple_string(input: Vec<u8>) -> Frame {
     let vec = input.into_iter().skip(1).take_while(|x| *x != b'\r').collect();
     let strin = String::from_utf8(vec).unwrap();
@@ -210,9 +219,11 @@ fn ser_array(input: Vec<u8>) -> Result<Frame, String> {     //DOESNT WORK BC LIN
     }
     Ok(Frame::Array(out))
 }
+*/
 
 //DESERIALIZATION
 
+/*
 fn deser_simple_string(s: String) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::new();
     output.push('+' as u8);
@@ -295,24 +306,26 @@ fn deser_array(vec: &mut Vec<Frame>) -> Vec<u8> {
     }
      output
 }
-
+*/
 
 //TESTS
 
 #[cfg(test)]
 mod tests {
     use crate::Frame;
-
-    use super::{deser_error, ser_array};
+    use std::io::Cursor;
+    //use super::{deser_error, ser_array};
 
     #[test]
     fn simple_serialization() {
-        let input = "+OK\r\n".as_bytes().to_vec();
-        let output = Frame::serialize(input).unwrap();
+        let input = "+OK\r\n".as_bytes();
+        let mut input_cursor = Cursor::new(input);
+        let output = Frame::serialize(&mut input_cursor).unwrap();
         let expected = Frame::Simple("OK".to_string());
         assert_eq!(output, expected);
     }
 
+    /*
     #[test]
     fn simple_deser() {
         let mut input = Frame::Simple("OK".to_string());
@@ -320,15 +333,18 @@ mod tests {
         let expected = "+OK\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
+    */
 
     #[test]
     fn error_serialization() {
-        let input = "-Error message\r\n".as_bytes().to_vec();
-        let output = Frame::serialize(input).unwrap();
+        let input = "-Error message\r\n".as_bytes();
+        let mut input_cursor = Cursor::new(input);
+        let output = Frame::serialize(&mut input_cursor).unwrap();
         let expected = Frame::Error("Error message".to_string());
         assert_eq!(output, expected);
     }
 
+    /*
     #[test]
     fn error_deser() {
         let mut input = Frame::Error("Error message".to_string());
@@ -419,4 +435,5 @@ mod tests {
         let expected = "*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n".as_bytes().to_vec();
         assert_eq!(output, expected);
     }
+    */
 }

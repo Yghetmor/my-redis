@@ -1,0 +1,16 @@
+[package]
+name = "my-redis"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "redis-cli"
+path = "src/bin/cli.rs"
+
+[[bin]]
+name = "redis-server"
+path = "src/bin/server.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+bytes = "1"

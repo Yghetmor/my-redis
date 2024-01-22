@@ -5,7 +5,7 @@ use bytes::Bytes;
 #[derive(PartialEq, Debug)]
 pub enum Command {
     PING,
-    GET (String),
+    GET { name: String },
     SET (String, Frame),
     NULL,
 }
@@ -43,7 +43,7 @@ impl Handler {
                                     if vec.len() != 2 {
                                         return Err("incorrect number of arguments for GET command".to_string());
                                     } else {
-                                        self.command = Command::GET( vec[1].to_string().unwrap() );
+                                        self.command = Command::GET{ name: vec[1].to_string().unwrap() };
                                         Ok(())
                                     }
                                 },
@@ -81,7 +81,7 @@ impl Handler {
                 if vec.len() != 2 {
                     Err("Incorrect number of arguments for GET command".to_string())
                 } else {
-                    self.command = Command::GET( vec[1].to_string() );
+                    self.command = Command::GET{ name: vec[1].to_string() };
                     Ok(())
                 }
             }
@@ -102,10 +102,10 @@ impl Handler {
     
     fn make_frame(self) -> Result<Frame, String> {
         match self.command {
-            Command::GET(name) => {
-                let name = name.clone();
+            Command::GET{name} => {
+                let name = name.as_str().clone();
                 Ok(Frame::Array(
-                    vec![Frame::Bulk(Bytes::from("GET")), Frame::Bulk(Bytes::from(name.as_str()))]
+                    vec![Frame::Bulk(Bytes::from("GET")), Frame::Bulk(Bytes::from(name))]
                 ))
             },
             Command::SET(name, val) => {

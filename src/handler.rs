@@ -2,6 +2,7 @@ use crate::frame::Frame;
 use std::str;
 use bytes::Bytes;
 
+#[derive(PartialEq, Debug)]
 pub enum Command {
     PING,
     GET {
@@ -14,6 +15,7 @@ pub enum Command {
     NULL,
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Handler {
     command: Command,
 }
@@ -101,5 +103,117 @@ impl Handler {
             }
             _ => Err("Unknown command".to_string()),
         }
+    }
+}
+
+//TESTS
+
+#[cfg(test)]
+mod tests {
+    use bytes::Bytes;
+    use crate::Handler;
+    use crate::handler::Command;
+    use crate::frame::Frame;
+    
+    #[test]
+    fn handler_ping_command_frame() {
+        let ping = "PING".to_string();
+        let mut input = Frame::array();
+        input.push_simple(ping);
+
+        let mut handler = Handler::new();
+        handler.get_command(input).unwrap();
+
+        let expected = Handler{ command: Command::PING };
+
+        assert_eq!(handler, expected);
+    }
+
+    #[test]
+    fn handler_get_command_frame() {
+        let cmd = Bytes::from("GET");
+        let name = Bytes::from("test");
+        let mut input = Frame::array();
+        input.push_bulk(cmd);
+        input.push_bulk(name);
+
+        let mut handler = Handler::new();
+        handler.get_command(input).unwrap();
+
+        let expected = Handler {
+            command: Command::GET {
+                name: "test".to_string(),
+            }
+        };
+
+        assert_eq!(handler, expected);
+    }
+
+    #[test]
+    fn handler_set_command_frame() {
+        let cmd = Bytes::from("SET");
+        let name = Bytes::from("test");
+        let val = Bytes::from("testval");
+        let mut input = Frame::array();
+        input.push_bulk(cmd);
+        input.push_bulk(name);
+        input.push_bulk(val);
+
+        let mut handler = Handler::new();
+        handler.get_command(input).unwrap();
+
+        let expected = Handler {
+            command: Command::SET {
+                name: "test".to_string(),
+                val: Frame::Bulk(Bytes::from("testval")),
+            }
+        };
+
+        assert_eq!(handler, expected);
+    }
+    
+    #[test]
+    fn handler_ping_command_cli() {
+        let cmd = "PING";
+
+        let mut handler = Handler::new();
+        handler.make_command(cmd).unwrap();
+
+        let expected = Handler{ command: Command::PING };
+
+        assert_eq!(handler, expected);
+    }
+    
+    #[test]
+    fn handler_get_command_cli() {
+        let cmd = "GET test";
+
+        let mut handler = Handler::new();
+        handler.make_command(cmd).unwrap();
+
+        let expected = Handler {
+            command: Command::GET {
+                name: "test".to_string(),
+            }
+        };
+
+        assert_eq!(handler, expected);
+    }
+    
+    #[test]
+    fn handler_set_command_cli() {
+        let cmd = "SET test testval";
+
+        let mut handler = Handler::new();
+        handler.make_command(cmd).unwrap();
+
+        let expected = Handler {
+            command: Command::SET {
+                name: "test".to_string(),
+                val: Frame::Bulk(Bytes::from("testval")),
+            }
+        };
+
+        assert_eq!(handler, expected);
     }
 }

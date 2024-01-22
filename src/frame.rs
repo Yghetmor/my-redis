@@ -16,6 +16,13 @@ impl Frame {
         Frame::Array(vec![])
     }
 
+    pub fn push_simple(&mut self, string: String) {
+        match self {
+            Frame::Array(vec) => vec.push(Frame::Simple(string)),
+            _ => panic!("not an array frame"),
+        }
+    }
+
     pub fn push_bulk(&mut self, bytes: Bytes) {
         match self {
             Frame::Array(vec) => vec.push(Frame::Bulk(bytes)),

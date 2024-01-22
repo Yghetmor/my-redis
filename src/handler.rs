@@ -5,13 +5,8 @@ use bytes::Bytes;
 #[derive(PartialEq, Debug)]
 pub enum Command {
     PING,
-    GET {
-        name: String,
-    },
-    SET {
-        name: String,
-        val: Frame,
-    },
+    GET (String),
+    SET (String, Frame),
     NULL,
 }
 
@@ -48,7 +43,7 @@ impl Handler {
                                     if vec.len() != 2 {
                                         return Err("incorrect number of arguments for GET command".to_string());
                                     } else {
-                                        self.command = Command::GET{ name: vec[1].to_string().unwrap() };
+                                        self.command = Command::GET( vec[1].to_string().unwrap() );
                                         Ok(())
                                     }
                                 },
@@ -56,10 +51,10 @@ impl Handler {
                                     if vec.len() != 3 {
                                         return Err("incorrect number of arguments for SET command".to_string());
                                     } else {
-                                        self.command = Command::SET { 
-                                            name: vec[1].to_string().unwrap(),
-                                            val: vec[2].clone(),
-                                        };
+                                        self.command = Command::SET ( 
+                                            vec[1].to_string().unwrap(),
+                                            vec[2].clone(),
+                                        );
                                         Ok(())
                                     }
                                 },
@@ -86,7 +81,7 @@ impl Handler {
                 if vec.len() != 2 {
                     Err("Incorrect number of arguments for GET command".to_string())
                 } else {
-                    self.command = Command::GET { name: vec[1].to_string() };
+                    self.command = Command::GET( vec[1].to_string() );
                     Ok(())
                 }
             }
@@ -94,14 +89,32 @@ impl Handler {
                 if vec.len() != 3 {
                     Err("Incorrect number of arguments for SET command".to_string())
                 } else {
-                    self.command = Command::SET { 
-                        name: vec[1].to_string(),
-                        val: Frame::Bulk(Bytes::from(vec[2].to_string())),
-                    };
+                    self.command = Command::SET ( 
+                        vec[1].to_string(),
+                        Frame::Bulk(Bytes::from(vec[2].to_string())),
+                    );
                     Ok(())
                 }
             }
             _ => Err("Unknown command".to_string()),
+        }
+    }
+    
+    fn make_frame(self) -> Result<Frame, String> {
+        match self.command {
+            Command::GET(name) => {
+                let name = name.clone();
+                Ok(Frame::Array(
+                    vec![Frame::Bulk(Bytes::from("GET")), Frame::Bulk(Bytes::from(name.as_str()))]
+                ))
+            },
+            Command::SET(name, val) => {
+                Ok(Frame::Array(
+                        vec![Frame::Bulk(Bytes::from("SET")), Frame::Bulk(Bytes::from(name.as_str().clone())), val.clone()]
+                ))
+            },
+            Command::PING => Ok(Frame::Simple("PING".to_string())),
+            Command::NULL => Err("No command to frame".to_string()),
         }
     }
 }
@@ -141,9 +154,9 @@ mod tests {
         handler.get_command(input).unwrap();
 
         let expected = Handler {
-            command: Command::GET {
-                name: "test".to_string(),
-            }
+            command: Command::GET (
+                "test".to_string(),
+            )
         };
 
         assert_eq!(handler, expected);
@@ -163,10 +176,10 @@ mod tests {
         handler.get_command(input).unwrap();
 
         let expected = Handler {
-            command: Command::SET {
-                name: "test".to_string(),
-                val: Frame::Bulk(Bytes::from("testval")),
-            }
+            command: Command::SET (
+                "test".to_string(),
+                Frame::Bulk(Bytes::from("testval")),
+            )
         };
 
         assert_eq!(handler, expected);
@@ -192,9 +205,9 @@ mod tests {
         handler.make_command(cmd).unwrap();
 
         let expected = Handler {
-            command: Command::GET {
-                name: "test".to_string(),
-            }
+            command: Command::GET (
+                "test".to_string(),
+            )
         };
 
         assert_eq!(handler, expected);
@@ -208,10 +221,10 @@ mod tests {
         handler.make_command(cmd).unwrap();
 
         let expected = Handler {
-            command: Command::SET {
-                name: "test".to_string(),
-                val: Frame::Bulk(Bytes::from("testval")),
-            }
+            command: Command::SET (
+                "test".to_string(),
+                Frame::Bulk(Bytes::from("testval")),
+            )
         };
 
         assert_eq!(handler, expected);

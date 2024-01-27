@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::frame::Frame;
 use std::str;
 use bytes::Bytes;
@@ -11,14 +12,16 @@ pub enum Command {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct Handler {
+pub struct Handler<'a> {
     command: Command,
+    db: &'a mut HashMap<String, String>,
 }
 
-impl Handler {
-    fn new() -> Handler {
+impl<'a> Handler<'a> {
+    fn new(database: &mut HashMap<String, String>) -> Handler {
         Handler {
             command: Command::NULL,
+            db: database,
         }
     }
     
@@ -58,7 +61,7 @@ impl Handler {
                                         Ok(())
                                     }
                                 },
-                                _ => return Err("Unknown command".to_string()),
+                                cmd=> return Err(format!("Unknown command: {}", cmd)),
                             }
                         }
                         _ => return Err("Unexpected frame".to_string()),
@@ -69,12 +72,32 @@ impl Handler {
         }
     }
     
+    fn execute_cmd(self) -> Result<Frame, String> {
+        match self.command {
+            Command::PING => {
+                Ok(Frame::Simple("PONG".to_string()))
+            },
+            Command::GET(key) => {
+                if let Some(val) = self.db.get(&key) {
+                    Ok(Frame::Bulk(Bytes::from((*val).clone())))
+                } else {
+                    Ok(Frame::Simple("Nil".to_string()))
+                }
+            },
+            Command::SET(key, val) => {
+                self.db.insert(key, val.clone().to_string().unwrap());
+                Ok(Frame::Simple("Ok".to_string()))
+            },
+            Command::NULL => Err("Tried to execute null command".to_string()),
+        }
+    }
 }
 
 //TESTS
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use bytes::Bytes;
     use crate::Handler;
     use crate::handler::Command;
@@ -82,33 +105,39 @@ mod tests {
     
     #[test]
     fn handler_ping_command_frame() {
+        let mut db = HashMap::new();
         let ping = "PING".to_string();
         let mut input = Frame::array();
         input.push_simple(ping);
 
-        let mut handler = Handler::new();
+        let mut handler = Handler::new(&mut db);
         handler.get_command(input).unwrap();
 
-        let expected = Handler{ command: Command::PING };
+        let expected = Handler{ 
+            command: Command::PING, 
+            db: &mut db,
+        };
 
         assert_eq!(handler, expected);
     }
 
     #[test]
     fn handler_get_command_frame() {
+        let mut db = HashMap::new();
         let cmd = Bytes::from("GET");
         let name = Bytes::from("test");
         let mut input = Frame::array();
         input.push_bulk(cmd);
         input.push_bulk(name);
 
-        let mut handler = Handler::new();
+        let mut handler = Handler::new(&mut db);
         handler.get_command(input).unwrap();
 
         let expected = Handler {
             command: Command::GET (
                 "test".to_string(),
-            )
+            ),
+            db: &mut db,
         };
 
         assert_eq!(handler, expected);
@@ -116,6 +145,7 @@ mod tests {
 
     #[test]
     fn handler_set_command_frame() {
+        let mut db = HashMap::new();
         let cmd = Bytes::from("SET");
         let name = Bytes::from("test");
         let val = Bytes::from("testval");
@@ -124,14 +154,15 @@ mod tests {
         input.push_bulk(name);
         input.push_bulk(val);
 
-        let mut handler = Handler::new();
+        let mut handler = Handler::new(&mut db);
         handler.get_command(input).unwrap();
 
         let expected = Handler {
             command: Command::SET (
                 "test".to_string(),
                 Frame::Bulk(Bytes::from("testval")),
-            )
+            ),
+            db: &mut db,
         };
 
         assert_eq!(handler, expected);

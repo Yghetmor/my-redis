@@ -105,47 +105,50 @@ mod tests {
     
     #[test]
     fn handler_ping_command_frame() {
-        let mut db = HashMap::new();
+        let mut db1 = HashMap::new();
+        let mut db2 = HashMap::new();
         let ping = "PING".to_string();
         let mut input = Frame::array();
         input.push_simple(ping);
 
-        let mut handler = Handler::new(&mut db);
+        let mut handler = Handler::new(&mut db1);
         handler.get_command(input).unwrap();
 
         let expected = Handler{ 
             command: Command::PING, 
-            db: &mut db,
+            db: &mut db2,
         };
 
-        assert_eq!(handler, expected);
+        assert_eq!(handler.command, expected.command);
     }
 
     #[test]
     fn handler_get_command_frame() {
-        let mut db = HashMap::new();
+        let mut db1 = HashMap::new();
+        let mut db2 = HashMap::new();
         let cmd = Bytes::from("GET");
         let name = Bytes::from("test");
         let mut input = Frame::array();
         input.push_bulk(cmd);
         input.push_bulk(name);
 
-        let mut handler = Handler::new(&mut db);
+        let mut handler = Handler::new(&mut db1);
         handler.get_command(input).unwrap();
 
         let expected = Handler {
             command: Command::GET (
                 "test".to_string(),
             ),
-            db: &mut db,
+            db: &mut db2,
         };
 
-        assert_eq!(handler, expected);
+        assert_eq!(handler.command, expected.command);
     }
 
     #[test]
     fn handler_set_command_frame() {
-        let mut db = HashMap::new();
+        let mut db1 = HashMap::new();
+        let mut db2 = HashMap::new();
         let cmd = Bytes::from("SET");
         let name = Bytes::from("test");
         let val = Bytes::from("testval");
@@ -154,7 +157,7 @@ mod tests {
         input.push_bulk(name);
         input.push_bulk(val);
 
-        let mut handler = Handler::new(&mut db);
+        let mut handler = Handler::new(&mut db1);
         handler.get_command(input).unwrap();
 
         let expected = Handler {
@@ -162,9 +165,9 @@ mod tests {
                 "test".to_string(),
                 Frame::Bulk(Bytes::from("testval")),
             ),
-            db: &mut db,
+            db: &mut db2,
         };
 
-        assert_eq!(handler, expected);
+        assert_eq!(handler.command, expected.command);
     }
 }

@@ -170,4 +170,43 @@ mod tests {
 
         assert_eq!(handler.command, expected.command);
     }
+    
+    #[test]
+    fn handler_execute_command_test() {
+        let mut db1 = HashMap::new();
+        let mut db2 = HashMap::new();
+        let mut db3 = HashMap::new();
+
+        let ping_handler = Handler{ 
+            command: Command::PING, 
+            db: &mut db1,
+        };
+
+        let get_handler = Handler {
+            command: Command::GET (
+                "test".to_string(),
+            ),
+            db: &mut db2,
+        };
+
+        let set_handler = Handler {
+            command: Command::SET (
+                "test".to_string(),
+                Frame::Bulk(Bytes::from("testval")),
+            ),
+            db: &mut db3,
+        };
+
+        let ping_output = ping_handler.execute_cmd().unwrap();
+        let get_output = get_handler.execute_cmd().unwrap();
+        let set_output = set_handler.execute_cmd().unwrap();
+
+        let ping_expected = Frame::Simple("PONG".to_string());
+        let get_expected = Frame::Simple("Nil".to_string());
+        let set_expected = Frame::Simple("Ok".to_string());
+
+        assert_eq!(ping_output, ping_expected);
+        assert_eq!(get_output, get_expected);
+        assert_eq!(set_output, set_expected);
+    }
 }

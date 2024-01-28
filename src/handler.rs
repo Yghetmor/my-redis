@@ -18,14 +18,14 @@ pub struct Handler<'a> {
 }
 
 impl<'a> Handler<'a> {
-    fn new(database: &mut HashMap<String, String>) -> Handler {
+    pub fn new(database: &mut HashMap<String, String>) -> Handler {
         Handler {
             command: Command::NULL,
             db: database,
         }
     }
     
-    fn get_command(&mut self, frame: Frame) -> Result<(), String> {
+    pub fn get_command(&mut self, frame: Frame) -> Result<(), String> {
         match frame {
             Frame::Array(mut vec) => {
                 if vec.len() > 3 {
@@ -72,7 +72,7 @@ impl<'a> Handler<'a> {
         }
     }
     
-    fn execute_cmd(self) -> Result<Frame, String> {
+    pub fn execute_cmd(self) -> Result<Frame, String> {
         match self.command {
             Command::PING => {
                 Ok(Frame::Simple("PONG".to_string()))

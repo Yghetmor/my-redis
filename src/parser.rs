@@ -1,8 +1,8 @@
 use crate::frame::Frame;
 use bytes::Bytes;
 
-pub fn parse(input: &'static str) -> Result<Frame, String> {
-    let input: Vec<&str> = input.clone().split(' ').collect();
+pub fn parse(input: String) -> Result<Frame, String> {
+    let input: Vec<String> = input.clone().split(' ').map(String::from).collect();
     let mut output = Frame::array();
     let cmd = input[0].to_uppercase();
     match cmd.as_str() {
@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn parse_ping_test() {
-        let input = "PING";
+        let input = "PING".to_string();
         let output = parse(input).unwrap();
 
         let mut expected = Frame::array();
@@ -55,7 +55,7 @@ mod tests {
     
     #[test]
     fn parse_get_test() {
-        let input = "get key";
+        let input = "get key".to_string();
         let output = parse(input).unwrap();
 
         let mut expected = Frame::array();
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn parse_set_test() {
-        let input = "set key val";
+        let input = "set key val".to_string();
         let output = parse(input).unwrap();
 
         let mut expected = Frame::array();

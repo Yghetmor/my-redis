@@ -72,20 +72,20 @@ impl<'a> Handler<'a> {
         }
     }
     
-    pub fn execute_cmd(self) -> Result<Frame, String> {
-        match self.command {
+    pub fn execute_cmd(&mut self) -> Result<Frame, String> {
+        match &self.command {
             Command::PING => {
                 Ok(Frame::Simple("PONG".to_string()))
             },
             Command::GET(key) => {
-                if let Some(val) = self.db.get(&key) {
+                if let Some(val) = self.db.get(key) {
                     Ok(Frame::Bulk(Bytes::from((*val).clone())))
                 } else {
                     Ok(Frame::Simple("Nil".to_string()))
                 }
             },
             Command::SET(key, val) => {
-                self.db.insert(key, val.clone().to_string().unwrap());
+                self.db.insert((*key).clone(), val.clone().to_string().unwrap());
                 Ok(Frame::Simple("Ok".to_string()))
             },
             Command::NULL => Err("Tried to execute null command".to_string()),

@@ -25,7 +25,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let command = Frame::serialize(&mut io::Cursor::new(&buf)).unwrap();
         handler.get_command(command).unwrap();
-        handler.execute_cmd();
+        let mut response = handler.execute_cmd().unwrap();
+
+        stream.writable().await?;
+        match stream.try_write(&mut response.deserialize()) {
+            Ok(_) => {},
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) => return Err(e.into()),
+        }
     }
 
     //Ok(())

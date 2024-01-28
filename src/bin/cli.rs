@@ -6,7 +6,7 @@ use my_redis::parser::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut stream = TcpStream::connect("127.0.0.1:6379").await?;
+    let stream = TcpStream::connect("127.0.0.1:6379").await?;
     println!("Succesfully connected to redis server");
 
     loop {
@@ -27,11 +27,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 },
                 Err(e) => println!("{e}"),
             }
-
-            stream.writable().await?;
-
         }
+        
+        let mut buf = vec![0; 1024];
+        stream.readable().await?;
+        match stream.try_read(&mut buf) {
+            Ok(n) => {
+                buf.truncate(n);
+            },
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) => return Err(e.into()),
+        }
+
+        let mut response = Frame::serialize(&mut io::Cursor::new(&buf)).unwrap();
+        println!("{}", response.to_string().unwrap());
     }
+
+    println!("/nDisconnected from server");
 
     Ok(())
 }

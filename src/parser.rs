@@ -8,7 +8,6 @@ pub fn parse(input: String) -> Result<Frame, String> {
     let mut output = Frame::array();
     let binding = input[0].to_uppercase().clone();
     let cmd = binding.as_str();
-    println!("\"{cmd}\"");
     match cmd {
         "PING" => {
             if input.len() != 1 {

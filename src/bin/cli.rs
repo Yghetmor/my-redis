@@ -36,14 +36,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         
-        let mut buf = vec![0; 1024];
         stream.readable().await?;
-        match stream.try_read(&mut buf) {
-            Ok(n) => {
-                buf.truncate(n);
-            },
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
-            Err(e) => return Err(e.into()),
+        let mut buf = vec![0; 1024];
+        loop {
+            match stream.try_read(&mut buf) {
+                Ok(n) => {
+                    buf.truncate(n);
+                    println!("Read {n} chars");
+                    break;
+                },
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    continue;
+                },
+                Err(e) => return Err(e.into()),
+            }
         }
 
         let mut response = Frame::serialize(&mut io::Cursor::new(&buf)).unwrap();

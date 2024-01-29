@@ -12,13 +12,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
 
     let (stream, _) = listener.accept().await?;
+    println!("Got a connection");
 
     loop {
         let mut buf = vec![0; 4096];
         stream.readable().await?;
 
         match stream.try_read(&mut buf) {
-            Ok(n) => buf.truncate(n),
+            Ok(n) => {
+                buf.truncate(n);
+                println!("read some stuff");
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
             Err(e) => return Err(e.into()),
         }

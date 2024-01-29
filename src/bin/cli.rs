@@ -1,4 +1,5 @@
 use std::io;
+use std::io::Write;
 use tokio::net::TcpStream;
 use std::error::Error;
 use my_redis::frame::Frame;
@@ -11,6 +12,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         print!("my-redis$ ");
+        io::stdout().flush().unwrap();
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         if input == "END" {
@@ -20,12 +22,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Ok(ref mut frame) => {
                     stream.writable().await?;
                     match stream.try_write(&mut frame.deserialize()) {
-                        Ok(_) => {},
+                        Ok(_) => {
+                            println!("Succesfully wrote to stream");
+                        },
                         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
                         Err(e) => return Err(e.into()),
                     }
                 },
-                Err(e) => println!("{e}"),
+                Err(e) => {
+                    println!("{e}");
+                    continue;
+                }
             }
         }
         

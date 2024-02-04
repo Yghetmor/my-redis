@@ -1,19 +1,39 @@
 use tokio::net::TcpListener;
+use tokio::task;
 use std::error::Error;
 use std::io;
 use std::collections::HashMap;
+use tokio::net::TcpStream;
+use std::sync::{Arc, Mutex};
 use my_redis::Frame;
 use my_redis::Handler;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut db: HashMap<String, String> = HashMap::new();
-    let mut handler = Handler::new(&mut db);
+    let db: HashMap<String, String> = HashMap::new();
+    let db = Arc::new(Mutex::new(db));
+    let mut tasks = Vec::new();
+    //let mut handler = Handler::new(&mut db);
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
 
-    let (stream, _) = listener.accept().await?;
-    println!("Got a connection");
+    loop {
+        let (stream, _) = listener.accept().await?;
+        println!("Got a connection");
 
+        let db = db.clone();
+
+        let tsk = task::spawn(async {
+            handle_connexion(stream, db).await;
+        });
+
+        tasks.push(tsk);
+    }
+
+    //Ok(())
+}
+
+async fn handle_connexion(stream: TcpStream, DB: Arc<Mutex<HashMap<String, String>>>) -> Result<(), Box<dyn Error>> {
+    let mut handler = Handler::new(DB);
     loop {
         let mut buf = vec![0; 4096];
         stream.readable().await?;
@@ -41,6 +61,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Err(e) => return Err(e.into()),
         }
     }
-
-    //Ok(())
 }

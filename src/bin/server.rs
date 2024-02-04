@@ -40,8 +40,13 @@ async fn handle_connexion(stream: TcpStream, DB: Arc<Mutex<HashMap<String, Strin
 
         match stream.try_read(&mut buf) {
             Ok(n) => {
-                buf.truncate(n);
-                println!("read some stuff");
+                if n == 0 {
+                    println!("Connexion ended");
+                    return Ok(());
+                } else {
+                    buf.truncate(n);
+                    println!("read some stuff");
+                }
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
             Err(e) => return Err(e.into()),
